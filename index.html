@@ -152,6 +152,158 @@
           <div id="js-content" class="content-ll">
             
   
+    <article id="post-opencv-color" class="article article-type-post  article-index" itemscope itemprop="blogPost">
+  <div class="article-inner">
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2021/11/21/opencv-color/">Opencv颜色处理</a>
+    </h1>
+  
+
+        
+        <a href="/2021/11/21/opencv-color/" class="archive-article-date">
+  	<time datetime="2021-11-21T15:53:51.000Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2021-11-21</time>
+</a>
+        
+      </header>
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h1 id="一、颜色处理"><a href="#一、颜色处理" class="headerlink" title="一、颜色处理"></a>一、颜色处理</h1><p>这一章节主要还是了解一下概念，颜色。颜色我们常常使用的是三原色构建，模仿的人的眼睛识别系统，不同颜色的光谱。然而，在识别颜色的过程中，我们通常不会只确定一个颜色，例如 (212,22,154)这种方式去取颜色，我们会给颜色设定一个范围，在该范围内的颜色我们都需要，从而取出目标。那么，如何计算范围呢？简单的方法就是计算个通道的差值</p>
+<h2 id="1-1-计算两个颜色的距离"><a href="#1-1-计算两个颜色的距离" class="headerlink" title="1.1 计算两个颜色的距离"></a>1.1 计算两个颜色的距离</h2><p><a target="_blank" rel="noopener" href="https://zhuanlan.zhihu.com/p/26884695">范数</a></p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// cv中计算欧几里得范数的函数，2范数 简写为 l2_范数 不了解的可以查一下范数</span></span><br><span class="line"><span class="keyword">static_cast</span>&lt;<span class="keyword">int</span>&gt;( cv::norm&lt;<span class="keyword">int</span>,<span class="number">3</span>&gt;(cv::Vec3i(color[<span class="number">0</span>]-target[<span class="number">0</span>], color[<span class="number">1</span>]-target[<span class="number">1</span>], </span><br><span class="line"> color[<span class="number">2</span>]-target[<span class="number">2</span>])));</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<p>:::note</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">return</span> <span class="keyword">static_cast</span>&lt;<span class="keyword">int</span>&gt;( cv::norm&lt;uchar,<span class="number">3</span>&gt;(color-target));<span class="comment">// 错误！</span></span><br></pre></td></tr></table></figure>
+<p>因为计算的时候，如果target 大于 color 返回的不是负数，而是0;些运算符通常都调用了 saturate_cast，因此可以如下方式调用，但是效率并不高</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">cv::Vec3b dist; </span><br><span class="line">  </span><br><span class="line">cv::absdiff(color,target,dist); </span><br><span class="line"></span><br><span class="line"><span class="keyword">return</span> cv::sum(dist)[<span class="number">0</span>];</span><br></pre></td></tr></table></figure>
+<p>:::<br>absdiff 计算了两个像素之间的差距的绝对值，也可以计算image类型[cv::Mat]与cv::Scalar(target类型[])之间的差值，输出到dist中</p>
+<h2 id="1-2-取出需要的范围-threshold应用阈值"><a href="#1-2-取出需要的范围-threshold应用阈值" class="headerlink" title="1.2 取出需要的范围-threshold应用阈值"></a>1.2 取出需要的范围-threshold应用阈值</h2><p>先看一下这个如何函数如何使用</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">cv::threshold(output, <span class="comment">// 相同的输入/输出图像</span></span><br><span class="line">			output, </span><br><span class="line">			maxDist, <span class="comment">// 阈值（必须&lt;256）</span></span><br><span class="line">			<span class="number">255</span>, <span class="comment">// 最大值</span></span><br><span class="line">			cv::THRESH_BINARY_INV); <span class="comment">// 阈值化模式</span></span><br></pre></td></tr></table></figure>
+<ul>
+<li>arg_1: 表示输入的图像 cv::Mat</li>
+<li>arg_2: 表示输出的图像 cv::Mat</li>
+<li>arg_3: 表示阈值 要&lt;256</li>
+<li>arg_4: 当第五个参数阈值类型type取 THRESH_BINARY 或THRESH_BINARY_INV阈值类型时的最大值.</li>
+<li>arg_5: 表示模式，包含cv::THRESH_BINARY、cv::THRESH_BINARY_INV、cv::THRESH_TOZERO、cv::THRESH_TOZERO_INV、THRESH_TRUNC、THRESH_OTSU</li>
+</ul>
+<p><a target="_blank" rel="noopener" href="https://blog.csdn.net/qq_37385726/article/details/82015545">详细图片解释</a></p>
+<ul>
+<li>THRESH_BINARY : 大于阈值的部分被置为255，小于的部分被置为0，小于的部分为黑色 ，大于的部分为白色</li>
+<li>THRESH_BINARY_INV : 与上面相反，小于的部分为白色，大于的部分为黑色</li>
+<li>THRESH_TOZERO : 小于阈值的部分被设置为0</li>
+<li>THRESH_TOZERO_INV : 大于阈值的部分被设置为0</li>
+<li>THRESH_TRUNC : 表示削高，大于的部分设置成阈值，小于阈值的部分不变</li>
+<li>THRESH_OTSU : 表示自适应二值化</li>
+</ul>
+<h2 id="1-3-floodFill-函数-找到颜色接近的像素"><a href="#1-3-floodFill-函数-找到颜色接近的像素" class="headerlink" title="1.3 floodFill 函数 找到颜色接近的像素"></a>1.3 floodFill 函数 找到颜色接近的像素</h2><p>该方法与上面的阈值判断方法有类似，区别是判断当前像素时候，需要检查附近像素状态，为了识别某种颜色的相关区域。**<em>连续区域</em>**判断，只需要输入起始位置，和允许误差。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">cv::floodFill(image, <span class="comment">// 输入/输出图像 </span></span><br><span class="line">	cv::Point(<span class="number">100</span>, <span class="number">50</span>), <span class="comment">// 起始点</span></span><br><span class="line">	cv::Scalar(<span class="number">255</span>, <span class="number">255</span>, <span class="number">255</span>), <span class="comment">// 填充颜色</span></span><br><span class="line">	(cv::Rect*)<span class="number">0</span>, <span class="comment">// 填充区域的边界矩形</span></span><br><span class="line">	cv::Scalar(<span class="number">35</span>, <span class="number">35</span>, <span class="number">35</span>), <span class="comment">// 偏差的最小/最大阈值</span></span><br><span class="line">	cv::Scalar(<span class="number">35</span>, <span class="number">35</span>, <span class="number">35</span>), <span class="comment">// 正差阈值，两个阈值通常相等</span></span><br><span class="line">	cv::FLOODFILL_FIXED_RANGE); <span class="comment">// 与起始点像素比较</span></span><br></pre></td></tr></table></figure>
+<h2 id="1-4-分割图像-GrabCut"><a href="#1-4-分割图像-GrabCut" class="headerlink" title="1.4 分割图像 GrabCut"></a>1.4 分割图像 GrabCut</h2><p>上面讲的是通过特定的元素去分割图像，而GrabCut的想法是，划分前后场景的识别,先看一下他们如何使用：</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="function">cv::Rect <span class="title">rectangle</span><span class="params">(<span class="number">5</span>,<span class="number">70</span>,<span class="number">260</span>,<span class="number">120</span>)</span></span>;</span><br><span class="line">cv::Mat result; <span class="comment">// 分割结果（四种可能的值）</span></span><br><span class="line">cv::Mat bgModel,fgModel; <span class="comment">// 模型（内部使用）</span></span><br><span class="line"><span class="comment">// GrabCut 分割算法</span></span><br><span class="line">cv::<span class="built_in">grabCut</span>(image, <span class="comment">// 输入图像</span></span><br><span class="line"> result, <span class="comment">// 分割结果</span></span><br><span class="line"> rectangle, <span class="comment">// 包含前景的矩形</span></span><br><span class="line"> bgModel,fgModel, <span class="comment">// 模型</span></span><br><span class="line"> <span class="number">5</span>, <span class="comment">// 迭代次数</span></span><br><span class="line"> cv::GC_INIT_WITH_RECT); <span class="comment">// 使用矩形</span></span><br></pre></td></tr></table></figure>
+<p>其中，result的结果可能是四种之一:</p>
+<ul>
+<li>cv::GC_BGD:这个值表示明确属于背景的像素（例如本例中矩形之外的像素）。</li>
+<li>cv::GC_FGD：这个值表示明确属于前景的像素（本例中没有这种像素）。</li>
+<li>cv::GC_PR_BGD：这个值表示可能属于背景的像素。</li>
+<li>cv::GC_PR_FGD：这个值表示可能属于前景的像素（即本例中矩形之内像素的初始值）。</li>
+</ul>
+<p>result 是一个cv::Mat 类型，里面包含的值是如上四个，表示该像素点的4个结果，那么如何去使用result呢？</p>
+<p>首先想到的就是通过遍历扫描图像对比四个结果，然后输出到新的图像中，提取有效信息。这里可以使用<code>cv::compare</code> 方法：</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">cv::<span class="built_in">compare</span>(input,cv::GC_PR_FGD,result,cv::CMP_EQ); </span><br><span class="line"><span class="comment">// 生成输出图像</span></span><br><span class="line"><span class="function">cv::Mat <span class="title">foreground</span><span class="params">(image.size(),CV_8UC3,cv::Scalar(<span class="number">255</span>,<span class="number">255</span>,<span class="number">255</span>))</span></span>; </span><br><span class="line">image.<span class="built_in">copyTo</span>(foreground, result); <span class="comment">// 不复制背景像素</span></span><br></pre></td></tr></table></figure>
+<p><code>compare</code>比较方法是<code>CMP_EQ</code>，意思是判断<code>input</code>像素与<code>GC_PR_FGD</code>相等，然后输出到<code>result</code>中，如果相同则为255，不同就是0。这就可以使用<code>copyTo</code>将result作为mask掩码做拷贝，就提取出来了。</p>
+<p>:::warning<br>这里没有使用bgModel、fgModel两个，是否会有其他用途，目前还不清楚。<br>:::</p>
+<p>该函数还能够迭代使用，也就是反复将输出数据作为输入数据来迭代，第一次标记出前景和后景色，通过标志位<code>GC_INIT_WITH_MASK</code> 再输入模型, result是[in/out],表示result作为mask输入到该方法中。</p>
+<p>至于原理这里不再深究，后续为了验证有效性和优化在去看<a target="_blank" rel="noopener" href="https://blog.csdn.net/zouxy09/article/details/8534954">GrabCut</a></p>
+<h2 id="1-4-色彩空间"><a href="#1-4-色彩空间" class="headerlink" title="1.4 色彩空间"></a>1.4 色彩空间</h2><p>:::note<br>RGB方法表示很直观但是，但利用 RGB 色彩空间计算颜色之间的差距并不是衡量两个颜色相似度的最好方式。由于它不能准确等比的表示颜色对应的感官系统，什么意思呢？RGB 并不是感知均匀的色彩空间。也就是说，两种具有一定差距的颜色可能看起来非常接近，<br>而另外两种具有同样差距的颜色看起来却差别很大。<br>:::</p>
+<p>如何解决上述问题呢？</p>
+<p>我们需要一个感知均匀的表示方法：LAB颜色模型空间，这个就可以解决使用目标颜色与欧几里得距离来判断两个像素之间的色彩差距。cv提供了色差空间的转换模型，如下：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">cv::cvtColor(tmp, tmp, CV_BGR2Lab);</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>CIE L<em>a</em>b* 色彩空间， L表示色彩亮度， 通道和 b 通道表示色度组件，这些通道包含了像素的颜色信息，与亮度无关。</li>
+<li>CIE L<em>u</em>v* 色彩空间，L表示色彩亮度，对色度通道则使用不同的表示法。</li>
+<li>CIE XYZ 色彩空间，它是一种标准色彩空间，用与设备无关的方式表示任何可见颜色。在 L<em>a</em>b<em>和 L</em>u<em>v</em>色彩空间的计算中，用 XYZ 色彩空间作为一种中间表示法RGB 与 XYZ 之间的转换是线性的。还有一点非常有趣，就是 Y 通道对应着图像的灰度版本。</li>
+<li>HSV 和 HLS 这两种色彩空间很有意思它们把颜色分解成加值的色调和饱和度组件或亮度组件。人们用这种方式来描述的颜色会更加自然。比如说颜色搭配，这个衣服太亮了.</li>
+</ul>
+<p>因此HSV使用直观的方法表示颜色</p>
+<ul>
+<li>H 色度，表示主色，我们使用的颜色名称（例如绿色、<br>黄色和红色）就对应了不同的色调值。</li>
+<li>S 饱和度，表示颜色的鲜艳程度，柔和的颜色饱<br>和度较低，而彩虹的颜色饱和度就很高</li>
+<li>L 亮度，是一个主观的属性，表示某种颜色的光亮程度</li>
+</ul>
+<p>由于上面表述的都是人类对颜色的感官知觉，所以他们没有标准。色调、饱和度和亮度都有多种不同的定义和计算公式。</p>
+<p>因此Opencv比较推荐使用HSV和HLS色彩空间：</p>
+<p>那么我们可以了解一下它们的原理</p>
+<ul>
+<li><p>亮度的计算原理</p>
+<blockquote>
+<p>首先亮度是一个感觉值，在强度相同的情况下，人们会觉得绿色比蓝色等颜色的亮度更高。对 HSV 的实现中，它被定义为三个 BGR 成分中的最大值</p>
+</blockquote>
+</li>
+<li><p>饱和度的计算原理</p>
+<blockquote>
+<p>饱和度 = (Max(RGB)-Min(RGB))/Max(RGB) 灰度颜色包含的 R、G、B 的成分是相等的，相当于一种极不饱和的颜色，因此它的饱和度是 0（饱和度是一个 0<del>1.0 的值）。对于 8 位图像，饱和度被调节成一个 0</del>255 的值，并且作为灰度图像显示的时候，较亮区域对应的颜色具有较高的饱和度。比如RGB表示(2,0,0)，计算得到的饱和度为1。我们再看饱和度区间(0.1~1)，其表示颜色的鲜艳程度。这就和我们上面说的矛盾了。因此饱和度为黑色区域的地方，是没有意义的。</p>
+</blockquote>
+</li>
+<li><p>色调的计算原理</p>
+<blockquote>
+<p>色度：的色调通常用 0~360 的角度来表示，中红色是 0 度；200 度（强度 100），对应色度为蓝色；90 度，对应色度为绿色。对于 8 位图像，OpenCV 把角度除以 2，以适合单字节的存储范围。每个色调值对应指定颜色的色彩，与亮度和饱和度无<br>关。例如天空和水的色调是一样的</p>
+</blockquote>
+</li>
+</ul>
+<p>:::tip<br>综合上面说的 HSB 色彩空间通常用一个圆锥体来表示，圆锥体内部的每个点代表一种特定的颜色，<strong>角度</strong>位<br>置表示颜色的<strong>色调</strong>，到<strong>中轴线的距离</strong>表示<strong>饱和度</strong>，<strong>高度</strong>表示<strong>亮度</strong>。圆锥体的顶点表示黑色，它的<br>色调和饱和度是没有意义的。<br>:::</p>
+<h2 id="1-5-颜色的作用"><a href="#1-5-颜色的作用" class="headerlink" title="1.5 颜色的作用"></a>1.5 颜色的作用</h2><p>通过颜色可以找到特定的物体，更好的分割物体特征。有很多的用例</p>
+<ul>
+<li>辅助驾驶程序的路标检测功能，凭借颜色快速识别可能的路标信息</li>
+<li>皮肤检测，确定人手的位置<br>等</li>
+</ul>
+<p>下面我们载入图像识别皮肤，伪代码如下：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line"><span class="comment">// 输入：图片；最大、最小饱和度；最大、最小色度；</span></span><br><span class="line"><span class="comment">// 输出: 掩码</span></span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">divide_color</span><span class="params">(Mat Image, <span class="keyword">double</span> H_min, <span class="keyword">double</span> H_max, <span class="keyword">double</span> S_min, <span class="keyword">double</span> S_max, Mat output_mask)</span> </span>&#123;</span><br><span class="line">	<span class="comment">// 1 转换颜色到HSV色彩空间</span></span><br><span class="line">	cv::Mat hsv; </span><br><span class="line">	cv::cvtColor(image, hsv, CV_BGR2HSV);</span><br><span class="line">	<span class="comment">// 2 分离通道</span></span><br><span class="line">	<span class="built_in">std</span>::<span class="built_in">vector</span>&lt;cv::Mat&gt; channels; </span><br><span class="line">	cv::split(hsv, channels);</span><br><span class="line">	cv::Mat mask1;</span><br><span class="line">	cv::threshold(channels[<span class="number">0</span>], mask1, H_max, <span class="number">255</span>, cv::THRESH_BINARY_INV);</span><br><span class="line">	</span><br><span class="line">	cv::Mat mask2; <span class="comment">// 大于 minHue </span></span><br><span class="line">	cv::threshold(channels[<span class="number">0</span>], mask2, H_min, <span class="number">255</span>, cv::THRESH_BINARY);</span><br><span class="line">	</span><br><span class="line">	cv::Mat hueMask; <span class="comment">// 色调掩码</span></span><br><span class="line">	<span class="keyword">if</span> (minHue &lt; maxHue) </span><br><span class="line">		hueMask = mask1 &amp; mask2; </span><br><span class="line">	<span class="keyword">else</span> <span class="comment">// 如果区间穿越 0 度中轴线</span></span><br><span class="line">		hueMask = mask1 | mask2;</span><br><span class="line">	</span><br><span class="line">	<span class="comment">// 饱和度掩码</span></span><br><span class="line">	<span class="comment">// 从 minSat 到 maxSat </span></span><br><span class="line">	cv::Mat satMask; <span class="comment">// 饱和度掩码</span></span><br><span class="line">	cv::inRange(channels[<span class="number">1</span>], S_min, S_max, satMask);</span><br><span class="line">	</span><br><span class="line">	<span class="comment">// 组合掩码</span></span><br><span class="line">	output_mask = hueMask &amp; satMask;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">main</span><span class="params">(<span class="keyword">void</span>)</span> </span>&#123;</span><br><span class="line">	divide_color(image, <span class="number">160</span>, <span class="number">10</span>, <span class="comment">// 色调为 320 度~20 度</span></span><br><span class="line">				 <span class="number">25</span>, <span class="number">166</span>, <span class="comment">// 饱和度为~0.1~0.65 </span></span><br><span class="line">				 mask); </span><br><span class="line">	<span class="comment">// 显示使用掩码后的图像</span></span><br><span class="line">	<span class="function">cv::Mat <span class="title">detected</span><span class="params">(image.size(), CV_8UC3, cv::Scalar(<span class="number">0</span>, <span class="number">0</span>, <span class="number">0</span>))</span></span>; <span class="comment">// 创建一个黑色背景</span></span><br><span class="line">	image.copyTo(detected, mask); <span class="comment">// 根据掩码拷贝</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+      
+
+      
+    </div>
+    <div class="article-info article-info-index">
+      
+      
+      
+
+      
+        <p class="article-more-link">
+          <a class="article-more-a" href="/2021/11/21/opencv-color/">展开全文 >></a>
+        </p>
+      
+
+      
+      <div class="clearfix"></div>
+    </div>
+  </div>
+</article>
+
+<aside class="wrap-side-operation">
+    <div class="mod-side-operation">
+        
+        <div class="jump-container" id="js-jump-container" style="display:none;">
+            <a href="javascript:void(0)" class="mod-side-operation__jump-to-top">
+                <i class="icon-font icon-back"></i>
+            </a>
+            <div id="js-jump-plan-container" class="jump-plan-container" style="top: -11px;">
+                <i class="icon-font icon-plane jump-plane"></i>
+            </div>
+        </div>
+        
+        
+    </div>
+</aside>
+
+
+
+
+  
     <article id="post-opencv" class="article article-type-post  article-index" itemscope itemprop="blogPost">
   <div class="article-inner">
     
@@ -268,81 +420,6 @@
       
         <p class="article-more-link">
           <a class="article-more-a" href="/2021/11/21/opencv/">展开全文 >></a>
-        </p>
-      
-
-      
-      <div class="clearfix"></div>
-    </div>
-  </div>
-</article>
-
-<aside class="wrap-side-operation">
-    <div class="mod-side-operation">
-        
-        <div class="jump-container" id="js-jump-container" style="display:none;">
-            <a href="javascript:void(0)" class="mod-side-operation__jump-to-top">
-                <i class="icon-font icon-back"></i>
-            </a>
-            <div id="js-jump-plan-container" class="jump-plan-container" style="top: -11px;">
-                <i class="icon-font icon-plane jump-plane"></i>
-            </div>
-        </div>
-        
-        
-    </div>
-</aside>
-
-
-
-
-  
-    <article id="post-hello-world" class="article article-type-post  article-index" itemscope itemprop="blogPost">
-  <div class="article-inner">
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="article-title" href="/2021/11/21/hello-world/">Hello World</a>
-    </h1>
-  
-
-        
-        <a href="/2021/11/21/hello-world/" class="archive-article-date">
-  	<time datetime="2021-11-21T14:23:55.965Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2021-11-21</time>
-</a>
-        
-      </header>
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        <p>Welcome to <a target="_blank" rel="noopener" href="https://hexo.io/">Hexo</a>! This is your very first post. Check <a target="_blank" rel="noopener" href="https://hexo.io/docs/">documentation</a> for more info. If you get any problems when using Hexo, you can find the answer in <a target="_blank" rel="noopener" href="https://hexo.io/docs/troubleshooting.html">troubleshooting</a> or you can ask me on <a target="_blank" rel="noopener" href="https://github.com/hexojs/hexo/issues">GitHub</a>.</p>
-<h2 id="Quick-Start"><a href="#Quick-Start" class="headerlink" title="Quick Start"></a>Quick Start</h2><h3 id="Create-a-new-post"><a href="#Create-a-new-post" class="headerlink" title="Create a new post"></a>Create a new post</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$ hexo new <span class="string">&quot;My New Post&quot;</span></span><br></pre></td></tr></table></figure>
-
-<p>More info: <a target="_blank" rel="noopener" href="https://hexo.io/docs/writing.html">Writing</a></p>
-<h3 id="Run-server"><a href="#Run-server" class="headerlink" title="Run server"></a>Run server</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$ hexo server</span><br></pre></td></tr></table></figure>
-
-<p>More info: <a target="_blank" rel="noopener" href="https://hexo.io/docs/server.html">Server</a></p>
-<h3 id="Generate-static-files"><a href="#Generate-static-files" class="headerlink" title="Generate static files"></a>Generate static files</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$ hexo generate</span><br></pre></td></tr></table></figure>
-
-<p>More info: <a target="_blank" rel="noopener" href="https://hexo.io/docs/generating.html">Generating</a></p>
-<h3 id="Deploy-to-remote-sites"><a href="#Deploy-to-remote-sites" class="headerlink" title="Deploy to remote sites"></a>Deploy to remote sites</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$ hexo deploy</span><br></pre></td></tr></table></figure>
-
-<p>More info: <a target="_blank" rel="noopener" href="https://hexo.io/docs/one-command-deployment.html">Deployment</a></p>
-
-      
-
-      
-    </div>
-    <div class="article-info article-info-index">
-      
-      
-      
-
-      
-        <p class="article-more-link">
-          <a class="article-more-a" href="/2021/11/21/hello-world/">展开全文 >></a>
         </p>
       
 
